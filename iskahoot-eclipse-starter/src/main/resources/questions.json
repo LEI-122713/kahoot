@@ -1,0 +1,37 @@
+{
+  "questions": [
+    {
+      "question": "O que é uma thread?",
+      "points": 5,
+      "correct": 3,
+      "options": [
+        "Processo",
+        "Aplicação",
+        "Programa",
+        "Processo Ligeiro"
+      ]
+    },
+    {
+      "question": "Qual destas não é bloqueante?",
+      "points": 3,
+      "correct": 2,
+      "options": [
+        "join()",
+        "sleep(<ms>)",
+        "interrupted()",
+        "wait()"
+      ]
+    },
+    {
+      "question": "Quem gere o estado do jogo numa arquitetura cliente-servidor?",
+      "points": 4,
+      "correct": 0,
+      "options": [
+        "Servidor",
+        "Cliente",
+        "Sistema Operativo",
+        "Router"
+      ]
+    }
+  ]
+}
