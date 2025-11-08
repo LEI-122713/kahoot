@@ -13,5 +13,6 @@ public class Main {
     // para a entrega intermédia basta 1 equipa
     GameState gs = new GameState(qf.questions, List.of("Team1"));
     SwingUtilities.invokeLater(() -> new KahootClientWindow(gs).setVisible(true));
+    
   }
 }
