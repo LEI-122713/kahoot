@@ -1,5 +1,9 @@
 package iskahoot.model;
 
+
+// Representa uma pergunta do quiz.
+// Contém o texto da pergunta, a lista de opções, o índice da resposta correta e os pontos atribuídos.
+
 import java.util.List;
 
 public class Question {

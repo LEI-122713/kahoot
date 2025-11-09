@@ -7,6 +7,10 @@ import iskahoot.model.GameState;
 import javax.swing.*;
 import java.util.List;
 
+// Ponto de entrada da aplicação (cliente local).
+// Carrega as perguntas, cria o GameState e abre a janela gráfica.
+
+
 public class Main {
   public static void main(String[] args) {
     QuestionsFile qf = QuestionLoader.loadFromResource("/questions.json");

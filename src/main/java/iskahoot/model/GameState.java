@@ -3,67 +3,112 @@ package iskahoot.model;
 import java.util.*;
 
 /**
- * GameState (versão da entrega intermédia)
- * - Guarda as perguntas (já carregadas do JSON)
- * - Controla o índice da pergunta atual
- * - Mantém um placar por equipa
- * Sem rede e sem concorrência nesta fase.
+ * Estado local do quiz (entrega intermédia):
+ * - perguntas (baralhadas), índice atual, placar por equipa
+ * - registo opcional de acertos por pergunta para estatísticas
+ * Sem rede/concorrência nesta fase.
  */
+
 public class GameState {
-  private final List<Question> questions;           // perguntas do quiz
-  private int idx = 0;                              // pergunta atual (0..n-1)
-  private final LinkedHashMap<String,Integer> scoreboard = new LinkedHashMap<>();
 
-  public GameState(List<Question> questions, List<String> teamIds) {
-    // cópia defensiva para não mexer na lista original
-    this.questions = new ArrayList<>(questions);
-    // cria as equipas no placar a zero (ordem preservada)
-    for (String t : teamIds) scoreboard.put(t, 0);
-  }
+    private final List<Question> questions;                 // perguntas do quiz (baralhadas)
+    private int idx = 0;                                    // índice da pergunta atual (0..n-1)
+    private final LinkedHashMap<String,Integer> scoreboard = new LinkedHashMap<>();
 
-  /* ====== Progresso ====== */
+    // (opcional p/ estatísticas de ronda): questionIndex -> (teamId -> acertou?)
+    private final Map<Integer, Map<String, Boolean>> answersByQuestion = new HashMap<>();
 
-  /** Há mais perguntas por responder? */
-  public boolean hasNext() { return idx < questions.size(); }
+    public GameState(List<Question> questions, List<String> teamIds) {
+        // cópia defensiva + baralhar (ordem aleatória em cada execução)
+        this.questions = new ArrayList<>(Objects.requireNonNull(questions, "questions"));
+        Collections.shuffle(this.questions, new Random());
 
-  /** Pergunta atual (sem avançar). */
-  public Question current() { return questions.get(idx); }
+        // inicializar placar (ordem das equipas preservada)
+        Objects.requireNonNull(teamIds, "teamIds").forEach(t -> scoreboard.put(t, 0));
+    }
 
-  /** Avança para a próxima pergunta. */
-  public void next() { idx++; }
+    /* ===== Progresso ===== */
 
-  /** Nº total de perguntas. */
-  public int total() { return questions.size(); }
+    /** Há mais perguntas por responder? */
 
-  /** Índice (0-based) da pergunta atual. */
-  public int index() { return idx; }
+    public boolean hasNext() {
+        return idx < questions.size();
+    }
 
-  /* ====== Respostas & Pontuação ====== */
+    /** Pergunta atual (lança exceção se o quiz já terminou). */
 
-  /**
-   * Regista a resposta da equipa. Se estiver certa, soma os pontos da pergunta.
-   * @param teamId  ex.: "Team1"
-   * @param option  índice da opção escolhida (0..)
-   * @return true se acertou, false se errou
-   */
-  public boolean submitAnswer(String teamId, int option) {
-    if (!scoreboard.containsKey(teamId)) return false; // equipa inválida
-    Question q = current();
-    boolean correct = (option == q.correct);
-    if (correct) scoreboard.put(teamId, scoreboard.get(teamId) + q.points);
-    return correct;
-  }
+    public Question current() {
+        if (!hasNext()) throw new IllegalStateException("No current question (quiz finished)");
+        return questions.get(idx);
+    }
 
-  /** Placar (cópia somente-leitura para mostrar na GUI). */
-  public Map<String,Integer> getScoreboard() {
-    return Collections.unmodifiableMap(new LinkedHashMap<>(scoreboard));
-  }
+    /** Avança para a próxima pergunta (ignora se já estiver no fim). */
 
-  /* ====== Utilidades opcionais ====== */
+    public void next() {
+        if (hasNext()) idx++;
+    }
 
-  /** Reinicia o quiz (volta ao início e zera o placar). */
-  public void reset() {
-    idx = 0;
-    for (var k : scoreboard.keySet()) scoreboard.put(k, 0);
-  }
+    /** Nº total de perguntas. */
+
+    public int total() {
+        return questions.size();
+    }
+
+    /** Índice (0-based) da pergunta atual. */
+
+    public int index() {
+        return idx;
+    }
+
+    /* ===== Respostas & Pontuação ===== */
+
+    /**
+     * Regista a resposta da equipa. Soma pontos se correta e guarda resultado para estatísticas.
+     * @param teamId equipa (ex.: "Team1")
+     * @param option índice da opção escolhida (0..)
+     * @return true se acertou, false caso contrário
+     */
+    public boolean submitAnswer(String teamId, int option) {
+        if (!scoreboard.containsKey(teamId))
+            throw new IllegalArgumentException("Unknown team: " + teamId);
+
+        Question q = current(); // pode lançar se já terminou
+        boolean correct = (option == q.correct);
+
+        if (correct) {
+            scoreboard.put(teamId, scoreboard.get(teamId) + q.points);
+        }
+
+        // registar estatística da pergunta atual
+        answersByQuestion
+                .computeIfAbsent(idx, k -> new HashMap<>())
+                .put(teamId, correct);
+
+        return correct;
+    }
+
+    /** Placar (cópia apenas-leitura). */
+
+    public Map<String,Integer> getScoreboard() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(scoreboard));
+    }
+
+    /** (prep) Estatísticas de uma pergunta: teamId -> acertou? */
+
+    public Map<String, Boolean> getAnswersFor(int questionIndex) {
+        Map<String, Boolean> m = answersByQuestion.get(questionIndex);
+        return (m == null) ? Collections.emptyMap() : Collections.unmodifiableMap(new HashMap<>(m));
+    }
+
+
+    /* ===== Utilidades ===== */
+
+    /** Reinicia o quiz: volta ao início, zera placar e estatísticas; volta a baralhar perguntas. */
+
+    public void reset() {
+        idx = 0;
+        scoreboard.replaceAll((k, v) -> 0);
+        answersByQuestion.clear();
+        Collections.shuffle(this.questions, new Random());
+    }
 }
