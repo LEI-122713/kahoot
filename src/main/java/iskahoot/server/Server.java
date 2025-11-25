@@ -6,14 +6,25 @@ import java.net.Socket;
 /**
  * Servidor simples da fase 4/5.
  * Aceita ligações e cria uma thread ClientHandler para cada cliente.
+ *
+ * Usa por defeito a porta 6000 (no teu Mac a 5000 está ocupada).
+ * Podes alterar a porta passando um argumento:
+ *
+ *   java iskahoot.server.Server 5000
  */
 public class Server {
 
-    private static final int PORT = 5000;
+    private static final int DEFAULT_PORT = 6000;
 
     public static void main(String[] args) throws Exception {
-        try (ServerSocket ss = new ServerSocket(PORT)) {
-            System.out.println("Servidor a correr no porto " + PORT);
+
+        int port = DEFAULT_PORT;
+        if (args.length >= 1) {
+            port = Integer.parseInt(args[0]);
+        }
+
+        try (ServerSocket ss = new ServerSocket(port)) {
+            System.out.println("Servidor a correr no porto " + port);
 
             while (true) {
                 Socket s = ss.accept();
