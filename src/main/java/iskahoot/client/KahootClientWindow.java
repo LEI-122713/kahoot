@@ -27,9 +27,10 @@ public class KahootClientWindow extends JFrame {
     private final OptionsListModel optionsModel = new OptionsListModel();
     private final JButton btnAnswer = new JButton("Responder");
     private final JLabel lblInfo = new JLabel("Placar: --");
+    private final JLabel lblTeam = new JLabel("A jogar como: --");
 
-    // Equipa atual (simulação — por agora só uma equipa)
-    private final String myTeam = "Team1";
+    // Equipa atual (passada pelo main)
+    private final String myTeam;
 
     // Estado do jogo (ligado ao modelo)
     private final GameState gs;
@@ -43,9 +44,10 @@ public class KahootClientWindow extends JFrame {
 
     /** Construtor principal */
 
-    public KahootClientWindow(GameState gs) {
+    public KahootClientWindow(GameState gs, String myTeam) {
         super("IsKahoot — Cliente");
         this.gs = gs;
+        this.myTeam = myTeam;
         initUI();              // monta a interface
         showQuestion();        // mostra a primeira pergunta
         refreshScoreboard();   // atualiza o placar
@@ -77,8 +79,10 @@ public class KahootClientWindow extends JFrame {
         add(center, BorderLayout.CENTER);
 
         // zona inferior (placar + botão responder)
-        JPanel south = new JPanel(new BorderLayout());
-        south.add(lblInfo, BorderLayout.NORTH);
+        JPanel south = new JPanel(new BorderLayout(0, 4));
+        lblTeam.setText("A jogar como: " + myTeam);
+        south.add(lblTeam, BorderLayout.NORTH);
+        south.add(lblInfo, BorderLayout.CENTER);
         south.add(btnAnswer, BorderLayout.SOUTH);
         add(south, BorderLayout.SOUTH);
 

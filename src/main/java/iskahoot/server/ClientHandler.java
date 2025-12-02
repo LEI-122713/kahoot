@@ -1,22 +1,38 @@
 package iskahoot.server;
 
-import iskahoot.net.JoinMessage;
-import iskahoot.net.JoinResponse;
-import iskahoot.net.Message;
+import iskahoot.model.Question;
+import iskahoot.model.Quiz;
+import iskahoot.net.*;
+import iskahoot.model.QuestionsFile;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Thread que trata UM cliente.
- * Agora usa ObjectInputStream/ObjectOutputStream para trocar objetos Message.
+ * Usa ObjectInputStream/ObjectOutputStream para trocar objetos Message.
+ * Fase 5: ciclo pergunta -> resposta -> placar, até acabar o quiz.
  */
 public class ClientHandler implements Runnable {
 
     private final Socket socket;
+    private final GameManager gm;
+    private final Quiz quiz;
 
-    public ClientHandler(Socket s) {
+    private String currentGame;
+    private String currentUser;
+    private String currentTeam;
+    private GameRoom room;
+    private GameSession session;
+    private GameSession.ClientEndpoint endpoint;
+
+    public ClientHandler(Socket s, GameManager gm, QuestionsFile qf) {
         this.socket = s;
+        this.gm = gm;
+        this.quiz = iskahoot.io.QuestionLoader.pickQuiz(qf);
     }
 
     @Override
@@ -41,21 +57,46 @@ public class ClientHandler implements Runnable {
                         ", equipa=" + join.teamId +
                         ", user=" + join.username);
 
-                // Aqui no futuro vais validar jogo/equipa/username com o GameState/servidor
-                // Por agora, aceitamos sempre:
-                JoinResponse resp = new JoinResponse(true,
-                        "Bem-vindo " + join.username + " à equipa " + join.teamId +
-                                " (jogo " + join.gameCode + ")");
+                JoinResponse resp = gm.handleJoin(join);
+                if (resp.ok) {
+                    currentGame = join.gameCode;
+                    currentUser = join.username;
+                    currentTeam = join.teamId;
+                    room = gm.getRoom(currentGame);
+                    session = gm.getOrCreateSession(currentGame, room, quiz);
+                }
 
                 // 3) Enviar resposta
                 out.writeObject(resp);
                 out.flush();
+
+                if (resp.ok) {
+                    endpoint = new GameSession.ClientEndpoint(out);
+                    session.addClient(endpoint, currentTeam, currentUser);
+                    listenLoop(in);
+                }
             } else {
                 System.out.println("Tipo de mensagem não suportado: " + msg.getClass());
             }
 
         } catch (IOException | ClassNotFoundException e) {
             System.out.println("Erro no cliente: " + e.getMessage());
+        } finally {
+            gm.disconnectUser(currentGame, currentUser);
+            if (session != null && endpoint != null) {
+                session.removeClient(endpoint, currentUser);
+            }
+        }
+    }
+
+    private void listenLoop(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        while (true) {
+            Message incoming = (Message) in.readObject();
+            if (incoming instanceof AnswerMessage ans) {
+                session.handleAnswer(ans);
+            } else {
+                // ignorar
+            }
         }
     }
 }

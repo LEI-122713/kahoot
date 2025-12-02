@@ -1,5 +1,8 @@
 package iskahoot.server;
 
+import iskahoot.io.QuestionLoader;
+import iskahoot.model.QuestionsFile;
+
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -23,13 +26,16 @@ public class Server {
             port = Integer.parseInt(args[0]);
         }
 
+        GameManager gm = new GameManager();
+        QuestionsFile qf = QuestionLoader.loadFromResource("/questions.json");
+        new Thread(new ServerConsole(gm), "server-console").start();
+
         try (ServerSocket ss = new ServerSocket(port)) {
             System.out.println("Servidor a correr no porto " + port);
-
             while (true) {
                 Socket s = ss.accept();
                 System.out.println("Cliente ligado: " + s.getInetAddress());
-                new Thread(new ClientHandler(s)).start();
+                new Thread(new ClientHandler(s, gm, qf)).start();
             }
         }
     }

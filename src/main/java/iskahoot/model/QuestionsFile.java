@@ -1,10 +1,12 @@
 package iskahoot.model;
 
+import java.util.List;
+
 // Representa o ficheiro JSON com as perguntas do jogo.
-// Usada pelo Gson para carregar a lista de Question a partir do ficheiro.
-
-
+// Suporta dois formatos:
+// 1) { "questions": [ ... ] }
+// 2) { "quizzes": [ { "name": "...", "questions": [ ... ] }, ... ] }
 public class QuestionsFile {
-    public java.util.List<Question> questions;
+    public List<Question> questions; // formato simples
+    public List<Quiz> quizzes;       // formato com vários quizzes
 }
-

@@ -3,6 +3,11 @@ package iskahoot.client;
 import iskahoot.net.JoinMessage;
 import iskahoot.net.JoinResponse;
 import iskahoot.net.Message;
+import iskahoot.net.QuestionMessage;
+import iskahoot.net.AnswerMessage;
+import iskahoot.net.ScoreboardMessage;
+import iskahoot.net.GameOverMessage;
+import iskahoot.net.ErrorMessage;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -46,10 +51,43 @@ public class NetClient {
             Object obj = in.readObject();
             if (obj instanceof JoinResponse resp) {
                 System.out.println("Resposta do servidor: ok=" + resp.ok + ", info=" + resp.info);
+                if (!resp.ok) return;
             } else if (obj instanceof Message) {
                 System.out.println("Recebi outro tipo de mensagem: " + obj.getClass());
+                return;
             } else {
                 System.out.println("Objeto desconhecido do servidor.");
+                return;
+            }
+
+            // 4) Esperar pergunta
+            while (true) {
+                Object recv = in.readObject();
+                if (recv instanceof QuestionMessage qmsg) {
+                    System.out.println("Pergunta [" + (qmsg.questionIndex + 1) + "/" + qmsg.totalQuestions + "]: " + qmsg.questionText);
+                    for (int i = 0; i < qmsg.options.size(); i++) {
+                        System.out.println("  " + i + ") " + qmsg.options.get(i));
+                    }
+
+                    // para teste: responde sempre com a opção 0
+                    AnswerMessage ans = new AnswerMessage(gameCode, teamId, username, qmsg.questionIndex, 0);
+                    out.writeObject(ans);
+                    out.flush();
+                    System.out.println("Resposta enviada (opção 0)");
+
+                } else if (recv instanceof ScoreboardMessage sm) {
+                    System.out.println("Placar: " + sm.scoreboard + " (" + sm.info + ")");
+                } else if (recv instanceof GameOverMessage gm) {
+                    System.out.println("Fim: " + gm.info);
+                    break;
+                } else if (recv instanceof ErrorMessage em) {
+                    System.out.println("Erro: " + em.info);
+                } else if (recv instanceof Message) {
+                    System.out.println("Mensagem não tratada: " + recv.getClass());
+                } else {
+                    System.out.println("Objeto desconhecido do servidor.");
+                    break;
+                }
             }
 
         }

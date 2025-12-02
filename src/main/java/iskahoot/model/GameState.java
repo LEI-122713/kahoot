@@ -27,6 +27,10 @@ public class GameState {
         Objects.requireNonNull(teamIds, "teamIds").forEach(t -> scoreboard.put(t, 0));
     }
 
+    public GameState(Quiz quiz, List<String> teamIds) {
+        this(quiz.safeQuestions(), teamIds);
+    }
+
     /* ===== Progresso ===== */
 
     /** Há mais perguntas por responder? */
