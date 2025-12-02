@@ -1,6 +1,7 @@
 package iskahoot.client;
 
 import iskahoot.net.*;
+import iskahoot.model.Quiz;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,7 +15,7 @@ import java.util.Map;
  */
 public class NetworkKahootWindow extends JFrame implements AutoCloseable {
 
-    private final JLabel lblTitle = new JLabel("IsKahoot — Cliente (Rede)");
+    private final JLabel lblTitle = new JLabel("IsKahoot - Cliente (Rede)");
     private final JLabel lblQuestion = new JLabel("Pergunta");
     private final OptionsListModel optionsModel = new OptionsListModel();
     private final JList<String> listOptions = new JList<>(optionsModel);
@@ -28,16 +29,19 @@ public class NetworkKahootWindow extends JFrame implements AutoCloseable {
     private final String gameCode;
     private final String teamId;
     private final String username;
+    private final Quiz quiz;
 
     private Thread readerThread;
+    private javax.swing.Timer swingTimer;
 
     public NetworkKahootWindow(NetGuiClient conn, String gameCode, String teamId, String username) {
-        super("IsKahoot — Cliente (Rede)");
+        super("IsKahoot - Cliente (Rede)");
         this.out = conn.out();
         this.in = conn.in();
         this.gameCode = gameCode;
         this.teamId = teamId;
         this.username = username;
+        this.quiz = conn.quiz();
 
         initUI();
         startReader();
@@ -52,7 +56,8 @@ public class NetworkKahootWindow extends JFrame implements AutoCloseable {
         north.add(lblTitle, BorderLayout.WEST);
         north.add(lblTeam, BorderLayout.CENTER);
         north.add(lblTimer, BorderLayout.EAST);
-        lblTeam.setText("Equipa: " + teamId + " | Utilizador: " + username);
+        String quizInfo = (quiz != null) ? " | Quiz: " + quiz.name + " (" + quiz.questions.size() + " perguntas)" : "";
+        lblTeam.setText("Equipa: " + teamId + " | Utilizador: " + username + quizInfo);
         add(north, BorderLayout.NORTH);
 
         lblQuestion.setFont(lblQuestion.getFont().deriveFont(Font.BOLD, 18f));
@@ -94,7 +99,7 @@ public class NetworkKahootWindow extends JFrame implements AutoCloseable {
                     }
                 }
             } catch (Exception ex) {
-                // ligação terminou
+                // ligacao terminou
             } finally {
                 SwingUtilities.invokeLater(this::disableUI);
                 stopTimer();
@@ -110,16 +115,26 @@ public class NetworkKahootWindow extends JFrame implements AutoCloseable {
         listOptions.setEnabled(true);
         btnAnswer.setEnabled(true);
         btnAnswer.putClientProperty("questionIndex", q.questionIndex);
+        lblInfo.setText("Placar: --");
     }
 
     private void showScoreboard(ScoreboardMessage s) {
-        lblInfo.setText("Placar: " + formatScoreboard(s.scoreboard) + " | " + s.info);
+        StringBuilder text = new StringBuilder();
+        text.append("Placar: ").append(formatScoreboard(s.scoreboard));
+        if (s.roundPoints != null && !s.roundPoints.isEmpty()) {
+            text.append(" | Ronda: ").append(formatScoreboard(s.roundPoints));
+        }
+        if (s.ranking != null && !s.ranking.isEmpty()) {
+            text.append(" | Ranking: ").append(String.join(" > ", s.ranking));
+        }
+        text.append(" | ").append(s.info);
+        lblInfo.setText(text.toString());
     }
 
-    private String formatScoreboard(Map<String,Integer> sb) {
+    private String formatScoreboard(Map<String, Integer> sb) {
         if (sb == null || sb.isEmpty()) return "--";
         StringBuilder b = new StringBuilder();
-        sb.forEach((k,v) -> b.append(k).append(": ").append(v).append("  "));
+        sb.forEach((k, v) -> b.append(k).append(": ").append(v).append("  "));
         return b.toString();
     }
 
@@ -137,7 +152,7 @@ public class NetworkKahootWindow extends JFrame implements AutoCloseable {
     private void sendAnswer() {
         int sel = listOptions.getSelectedIndex();
         if (sel < 0) {
-            JOptionPane.showMessageDialog(this, "Escolhe uma opção primeiro.");
+            JOptionPane.showMessageDialog(this, "Escolhe uma opcao primeiro.");
             return;
         }
         Object qiObj = btnAnswer.getClientProperty("questionIndex");
@@ -153,18 +168,20 @@ public class NetworkKahootWindow extends JFrame implements AutoCloseable {
     }
 
     // Timer visual (decrescente)
-    private javax.swing.Timer swingTimer;
     private void startTimer(int seconds) {
         stopTimer();
         lblTimer.setText("Tempo: " + seconds + "s");
         final int[] remaining = {seconds};
         swingTimer = new javax.swing.Timer(1000, ev -> {
             remaining[0]--;
-            lblTimer.setText("Tempo: " + Math.max(0, remaining[0]) + "s");
-            if (remaining[0] <= 0) {
+            int value = Math.max(0, remaining[0]);
+            lblTimer.setText("Tempo: " + value + "s");
+            if (value <= 0) {
                 stopTimer();
                 listOptions.setEnabled(false);
                 btnAnswer.setEnabled(false);
+                lblInfo.setText("Placar: tempo esgotado nesta ronda");
+                Toolkit.getDefaultToolkit().beep();
             }
         });
         swingTimer.setInitialDelay(1000);

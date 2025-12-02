@@ -21,6 +21,7 @@ public class GameSession {
     private final String code;
     private final Quiz quiz;
     private final GameRoom roomInfo;
+    private final GameManager gm;
 
     private final List<Question> questions;
     private final AtomicInteger currentIndex = new AtomicInteger(0);
@@ -38,10 +39,11 @@ public class GameSession {
     private final AtomicBoolean finished = new AtomicBoolean(false);
     private RoundState roundState;
 
-    public GameSession(String code, Quiz quiz, GameRoom roomInfo) {
+    public GameSession(String code, Quiz quiz, GameRoom roomInfo, GameManager gm) {
         this.code = code;
         this.quiz = quiz;
         this.roomInfo = roomInfo;
+        this.gm = gm;
         List<Question> tmp = new ArrayList<>(quiz.questions);
         Collections.shuffle(tmp, new Random());
         int limit = Math.min(roomInfo.numQuestions(), tmp.size());
@@ -66,6 +68,10 @@ public class GameSession {
     public void removeClient(ClientEndpoint ce, String username) {
         clients.remove(ce);
         userTeam.remove(username);
+    }
+
+    public boolean isFinished() {
+        return finished.get();
     }
 
     public synchronized void sendCurrentQuestionTo(ClientEndpoint ce) {
@@ -119,6 +125,9 @@ public class GameSession {
         }
         finished.set(true);
         broadcast(new GameOverMessage(code, "Fim do jogo"));
+        if (gm != null) {
+            gm.endGame(code);
+        }
     }
 
     /**
@@ -133,16 +142,22 @@ public class GameSession {
         private final Map<String, List<AnswerMessage>> answersByTeam = new HashMap<>();
         private final Set<String> answeredUsers = new HashSet<>();
         private final AtomicBoolean ended = new AtomicBoolean(false);
+        private final Map<String,Integer> roundPoints = new HashMap<>();
         private final long deadline = System.currentTimeMillis() + 30_000;
+        private final AtomicInteger teamsFinished = new AtomicInteger(0);
+        private final int totalTeams;
 
         RoundState(Question q, int idx, boolean teamQuestion) {
             this.question = q;
             this.idx = idx;
             this.teamQuestion = teamQuestion;
             this.latch = new ModifiedCountdownLatch(2, 2, 30, expectedPlayersIndividual());
-            roomInfo.snapshotTeams().forEach((team, users) -> {
-                teamBarriers.put(team, new TeamBarrier(roomInfo.playersPerTeam(), 30, () -> {}));
+            Map<String, Set<String>> snapshot = roomInfo.snapshotTeams();
+            this.totalTeams = snapshot.size();
+            snapshot.forEach((team, users) -> {
+                teamBarriers.put(team, new TeamBarrier(roomInfo.playersPerTeam(), 30, () -> onTeamBarrierRelease(team)));
                 answersByTeam.put(team, new ArrayList<>());
+                roundPoints.put(team, 0);
             });
         }
 
@@ -167,7 +182,9 @@ public class GameSession {
             boolean correct = (ans.option == question.correct);
             int factor = latch.countdown();
             if (correct) {
-                scoreboard.merge(ans.teamId, question.points * factor, Integer::sum);
+                int gained = question.points * factor;
+                scoreboard.merge(ans.teamId, gained, Integer::sum);
+                roundPoints.merge(ans.teamId, gained, Integer::sum);
             }
         }
 
@@ -176,10 +193,10 @@ public class GameSession {
             if (teamList == null) return;
             synchronized (teamList) {
                 teamList.add(ans);
-                if (teamList.size() >= roomInfo.playersPerTeam()) {
-                    evaluateTeam(ans.teamId);
-                    teamBarriers.get(ans.teamId).release();
-                }
+            }
+            try {
+                teamBarriers.get(ans.teamId).await();
+            } catch (InterruptedException ignored) {
             }
         }
 
@@ -195,16 +212,14 @@ public class GameSession {
             }
             int gained = allCorrect ? question.points * 2 : best;
             scoreboard.merge(teamId, gained, Integer::sum);
+            roundPoints.merge(teamId, gained, Integer::sum);
         }
 
         void awaitRoundEnd() {
-            while (true) {
-                if (System.currentTimeMillis() >= deadline) {
-                    timeout();
-                    break;
-                }
-                if (ended.get()) break;
-                try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+            if (teamQuestion) {
+                waitTeamsOrTimeout();
+            } else {
+                waitIndividualsOrTimeout();
             }
         }
 
@@ -216,11 +231,34 @@ public class GameSession {
             ended.set(true);
         }
 
+        private void waitIndividualsOrTimeout() {
+            try {
+                latch.await();
+            } catch (InterruptedException ignored) {
+            }
+            if (!latch.timedOut()) {
+                ended.set(true);
+            } else {
+                timeout();
+            }
+        }
+
+        private void waitTeamsOrTimeout() {
+            while (true) {
+                if (ended.get()) break;
+                if (System.currentTimeMillis() >= deadline) {
+                    timeout();
+                    break;
+                }
+                try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+            }
+        }
+
         private void checkEndCondition() {
             if (teamQuestion) {
-                boolean allTeamsDone = answersByTeam.values().stream()
-                        .allMatch(list -> list.size() >= roomInfo.playersPerTeam());
-                if (allTeamsDone) ended.set(true);
+                if (teamsFinished.get() >= totalTeams) {
+                    ended.set(true);
+                }
             } else {
                 if (answeredUsers.size() >= expectedPlayersIndividual()) {
                     ended.set(true);
@@ -228,8 +266,23 @@ public class GameSession {
             }
         }
 
+        private void onTeamBarrierRelease(String teamId) {
+            evaluateTeam(teamId);
+            int done = teamsFinished.incrementAndGet();
+            if (done >= totalTeams) {
+                ended.set(true);
+            }
+        }
+
         ScoreboardMessage buildScoreboardMessage(String gameCode) {
-            return new ScoreboardMessage(gameCode, idx, "Fim da ronda", new HashMap<>(scoreboard));
+            List<String> ranking = scoreboard.entrySet().stream()
+                    .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                    .map(Map.Entry::getKey)
+                    .toList();
+            return new ScoreboardMessage(gameCode, idx, "Fim da ronda",
+                    new HashMap<>(scoreboard),
+                    new HashMap<>(roundPoints),
+                    ranking);
         }
     }
 
@@ -255,17 +308,4 @@ public class GameSession {
     /**
      * Coordenação por pergunta (por jogo+índice).
      */
-    private static class RoundCoordination {
-        final ModifiedCountdownLatch latch;
-        final TeamBarrier barrier;
-
-        RoundCoordination(ModifiedCountdownLatch latch, TeamBarrier barrier) {
-            this.latch = latch;
-            this.barrier = barrier;
-        }
-    }
-
-    private static class RoundCoordinationHolder {
-        static final Map<String, RoundCoordination> INSTANCE = new ConcurrentHashMap<>();
-    }
 }

@@ -3,6 +3,8 @@ package iskahoot.client;
 import iskahoot.net.JoinMessage;
 import iskahoot.net.JoinResponse;
 import iskahoot.net.Message;
+import iskahoot.net.QuizPayloadMessage;
+import iskahoot.model.Quiz;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -15,6 +17,7 @@ public class NetGuiClient implements AutoCloseable {
     private final Socket socket;
     private final ObjectOutputStream out;
     private final ObjectInputStream in;
+    private Quiz quiz;
 
     private NetGuiClient(Socket socket, ObjectOutputStream out, ObjectInputStream in) {
         this.socket = socket;
@@ -38,7 +41,15 @@ public class NetGuiClient implements AutoCloseable {
                 s.close();
                 throw new IllegalStateException("Join falhou: " + resp.info);
             }
-            return new NetGuiClient(s, out, in);
+            // esperar quiz payload imediatamente a seguir
+            Object maybeQuiz = in.readObject();
+            Quiz loadedQuiz = null;
+            if (maybeQuiz instanceof QuizPayloadMessage qp) {
+                loadedQuiz = qp.quiz;
+            }
+            NetGuiClient client = new NetGuiClient(s, out, in);
+            client.quiz = loadedQuiz;
+            return client;
         }
         s.close();
         throw new IllegalStateException("Resposta inesperada do servidor");
@@ -50,6 +61,10 @@ public class NetGuiClient implements AutoCloseable {
 
     public ObjectInputStream in() {
         return in;
+    }
+
+    public Quiz quiz() {
+        return quiz;
     }
 
     @Override

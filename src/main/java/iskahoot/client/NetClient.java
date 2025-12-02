@@ -8,6 +8,8 @@ import iskahoot.net.AnswerMessage;
 import iskahoot.net.ScoreboardMessage;
 import iskahoot.net.GameOverMessage;
 import iskahoot.net.ErrorMessage;
+import iskahoot.net.QuizPayloadMessage;
+import iskahoot.model.Quiz;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -60,10 +62,17 @@ public class NetClient {
                 return;
             }
 
-            // 4) Esperar pergunta
+            // 4) Esperar quiz completo e depois perguntas
+            Quiz quiz = null;
             while (true) {
                 Object recv = in.readObject();
-                if (recv instanceof QuestionMessage qmsg) {
+                if (recv instanceof QuizPayloadMessage qp) {
+                    quiz = qp.quiz;
+                    System.out.println("Quiz recebido do servidor: " + (quiz != null ? quiz.name : "sem nome"));
+                    if (quiz != null) {
+                        System.out.println("Total de perguntas: " + quiz.questions.size());
+                    }
+                } else if (recv instanceof QuestionMessage qmsg) {
                     System.out.println("Pergunta [" + (qmsg.questionIndex + 1) + "/" + qmsg.totalQuestions + "]: " + qmsg.questionText);
                     for (int i = 0; i < qmsg.options.size(); i++) {
                         System.out.println("  " + i + ") " + qmsg.options.get(i));
@@ -77,6 +86,12 @@ public class NetClient {
 
                 } else if (recv instanceof ScoreboardMessage sm) {
                     System.out.println("Placar: " + sm.scoreboard + " (" + sm.info + ")");
+                    if (sm.roundPoints != null) {
+                        System.out.println("Pontos da ronda: " + sm.roundPoints);
+                    }
+                    if (sm.ranking != null) {
+                        System.out.println("Ranking: " + sm.ranking);
+                    }
                 } else if (recv instanceof GameOverMessage gm) {
                     System.out.println("Fim: " + gm.info);
                     break;

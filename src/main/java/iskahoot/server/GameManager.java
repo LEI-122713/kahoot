@@ -57,11 +57,16 @@ public class GameManager {
     }
 
     public synchronized GameSession getOrCreateSession(String code, GameRoom room, iskahoot.model.Quiz quiz) {
-        return sessions.computeIfAbsent(code, k -> new GameSession(code, quiz, room));
+        return sessions.computeIfAbsent(code, k -> new GameSession(code, quiz, room, this));
     }
 
     public synchronized Map<String, GameRoom> snapshotGames() {
         return new LinkedHashMap<>(games);
+    }
+
+    public synchronized void endGame(String code) {
+        sessions.remove(code);
+        games.remove(code);
     }
 
     private String generateCode() {

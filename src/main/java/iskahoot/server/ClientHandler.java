@@ -1,6 +1,5 @@
 package iskahoot.server;
 
-import iskahoot.model.Question;
 import iskahoot.model.Quiz;
 import iskahoot.net.*;
 import iskahoot.model.QuestionsFile;
@@ -70,6 +69,13 @@ public class ClientHandler implements Runnable {
                 out.writeObject(resp);
                 out.flush();
 
+                // 3b) Enviar quiz completo para o cliente (carregado do servidor)
+                if (resp.ok) {
+                    QuizPayloadMessage qp = new QuizPayloadMessage(currentGame, quiz);
+                    out.writeObject(qp);
+                    out.flush();
+                }
+
                 if (resp.ok) {
                     endpoint = new GameSession.ClientEndpoint(out);
                     session.addClient(endpoint, currentTeam, currentUser);
@@ -91,6 +97,7 @@ public class ClientHandler implements Runnable {
 
     private void listenLoop(ObjectInputStream in) throws IOException, ClassNotFoundException {
         while (true) {
+            if (session != null && session.isFinished()) break;
             Message incoming = (Message) in.readObject();
             if (incoming instanceof AnswerMessage ans) {
                 session.handleAnswer(ans);
