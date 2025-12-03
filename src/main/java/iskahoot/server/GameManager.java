@@ -69,6 +69,37 @@ public class GameManager {
         games.remove(code);
     }
 
+    /**
+     * Descrição detalhada dos jogos para a TUI: estado + placar.
+     */
+    public synchronized List<String> describeGames() {
+        List<String> res = new ArrayList<>();
+        for (Map.Entry<String, GameRoom> e : games.entrySet()) {
+            String code = e.getKey();
+            GameRoom room = e.getValue();
+            GameSession session = sessions.get(code);
+
+            String status;
+            if (session == null) status = "waiting";
+            else if (session.isFinished()) status = "finished";
+            else if (session.isStarted()) status = "running";
+            else status = "pending";
+
+            String scores = "--";
+            if (session != null) {
+                Map<String,Integer> sb = session.snapshotScoreboard();
+                if (!sb.isEmpty()) {
+                    StringBuilder b = new StringBuilder();
+                    sb.forEach((team, pts) -> b.append(team).append("=").append(pts).append(" "));
+                    scores = b.toString().trim();
+                }
+            }
+
+            res.add(code + " [" + status + "] " + room + " | placar: " + scores);
+        }
+        return res;
+    }
+
     private String generateCode() {
         String code;
         do {

@@ -8,7 +8,7 @@ import java.io.*;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.net.SocketTimeoutException;
 
 /**
  * Thread que trata UM cliente.
@@ -42,6 +42,7 @@ public class ClientHandler implements Runnable {
             ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
             out.flush();
             ObjectInputStream in = new ObjectInputStream(s.getInputStream());
+            s.setSoTimeout(1000); // para poder sair se o jogo acabar
 
             // 1) Ler uma mensagem do cliente
             Object obj = in.readObject();
@@ -98,11 +99,16 @@ public class ClientHandler implements Runnable {
     private void listenLoop(ObjectInputStream in) throws IOException, ClassNotFoundException {
         while (true) {
             if (session != null && session.isFinished()) break;
-            Message incoming = (Message) in.readObject();
-            if (incoming instanceof AnswerMessage ans) {
-                session.handleAnswer(ans);
-            } else {
-                // ignorar
+            try {
+                Message incoming = (Message) in.readObject();
+                if (incoming instanceof AnswerMessage ans) {
+                    session.handleAnswer(ans);
+                } else {
+                    // ignorar
+                }
+            } catch (SocketTimeoutException e) {
+                // timeout para reavaliar se jogo terminou
+                continue;
             }
         }
     }

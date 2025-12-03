@@ -57,12 +57,12 @@ public class ServerConsole implements Runnable {
     }
 
     private void handleList() {
-        Map<String, GameRoom> games = gm.snapshotGames();
-        if (games.isEmpty()) {
+        var infos = gm.describeGames();
+        if (infos.isEmpty()) {
             System.out.println("Sem jogos ativos.");
             return;
         }
-        games.values().forEach(g -> System.out.println(" - " + g));
+        infos.forEach(info -> System.out.println(" - " + info));
     }
 
     private void printHelp() {

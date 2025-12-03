@@ -10,8 +10,8 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Estado partilhado de um jogo (código específico).
@@ -58,6 +58,7 @@ public class GameSession {
     public void addClient(ClientEndpoint ce, String teamId, String username) {
         clients.add(ce);
         userTeam.put(username, teamId);
+        scoreboard.putIfAbsent(teamId, 0); // garantir que todas as equipas entram no placar
         if (!started.get() && allPlayersConnected()) {
             startGameLoop();
         } else if (started.get() && !finished.get()) {
@@ -70,8 +71,16 @@ public class GameSession {
         userTeam.remove(username);
     }
 
+    public boolean isStarted() {
+        return started.get();
+    }
+
     public boolean isFinished() {
         return finished.get();
+    }
+
+    public Map<String,Integer> snapshotScoreboard() {
+        return new LinkedHashMap<>(scoreboard);
     }
 
     public synchronized void sendCurrentQuestionTo(ClientEndpoint ce) {
@@ -139,13 +148,10 @@ public class GameSession {
         private final boolean teamQuestion;
         private final ModifiedCountdownLatch latch;
         private final Map<String, TeamBarrier> teamBarriers = new HashMap<>();
-        private final Map<String, List<AnswerMessage>> answersByTeam = new HashMap<>();
-        private final Set<String> answeredUsers = new HashSet<>();
         private final AtomicBoolean ended = new AtomicBoolean(false);
-        private final Map<String,Integer> roundPoints = new HashMap<>();
         private final long deadline = System.currentTimeMillis() + 30_000;
-        private final AtomicInteger teamsFinished = new AtomicInteger(0);
-        private final int totalTeams;
+        private final ScoreboardTracker scores = new ScoreboardTracker(scoreboard);
+        private final AnswerRegistry answers;
 
         RoundState(Question q, int idx, boolean teamQuestion) {
             this.question = q;
@@ -153,12 +159,10 @@ public class GameSession {
             this.teamQuestion = teamQuestion;
             this.latch = new ModifiedCountdownLatch(2, 2, 30, expectedPlayersIndividual());
             Map<String, Set<String>> snapshot = roomInfo.snapshotTeams();
-            this.totalTeams = snapshot.size();
-            snapshot.forEach((team, users) -> {
-                teamBarriers.put(team, new TeamBarrier(roomInfo.playersPerTeam(), 30, () -> onTeamBarrierRelease(team)));
-                answersByTeam.put(team, new ArrayList<>());
-                roundPoints.put(team, 0);
-            });
+            this.answers = new AnswerRegistry(snapshot);
+            snapshot.forEach((team, users) ->
+                    teamBarriers.put(team, new TeamBarrier(roomInfo.playersPerTeam(), 30, () -> onTeamBarrierRelease(team)))
+            );
         }
 
         private int expectedPlayersIndividual() {
@@ -166,10 +170,8 @@ public class GameSession {
         }
 
         void processAnswer(AnswerMessage ans) {
-            synchronized (this) {
-                if (ended.get()) return;
-                if (!answeredUsers.add(ans.username)) return; // já respondeu
-            }
+            if (ended.get()) return;
+            if (!answers.registerUser(ans.username)) return; // já respondeu
             if (teamQuestion) {
                 handleTeamAnswer(ans);
             } else {
@@ -183,17 +185,12 @@ public class GameSession {
             int factor = latch.countdown();
             if (correct) {
                 int gained = question.points * factor;
-                scoreboard.merge(ans.teamId, gained, Integer::sum);
-                roundPoints.merge(ans.teamId, gained, Integer::sum);
+                scores.addPoints(ans.teamId, gained);
             }
         }
 
         private void handleTeamAnswer(AnswerMessage ans) {
-            List<AnswerMessage> teamList = answersByTeam.get(ans.teamId);
-            if (teamList == null) return;
-            synchronized (teamList) {
-                teamList.add(ans);
-            }
+            answers.recordTeamAnswer(ans);
             try {
                 teamBarriers.get(ans.teamId).await();
             } catch (InterruptedException ignored) {
@@ -201,7 +198,7 @@ public class GameSession {
         }
 
         private void evaluateTeam(String teamId) {
-            List<AnswerMessage> teamList = answersByTeam.get(teamId);
+            List<AnswerMessage> teamList = answers.teamAnswers(teamId);
             if (teamList == null || teamList.isEmpty()) return;
             boolean allCorrect = teamList.size() >= roomInfo.playersPerTeam();
             int best = 0;
@@ -211,8 +208,7 @@ public class GameSession {
                 if (correct) best = Math.max(best, question.points);
             }
             int gained = allCorrect ? question.points * 2 : best;
-            scoreboard.merge(teamId, gained, Integer::sum);
-            roundPoints.merge(teamId, gained, Integer::sum);
+            scores.addPoints(teamId, gained);
         }
 
         void awaitRoundEnd() {
@@ -226,8 +222,7 @@ public class GameSession {
         private void timeout() {
             latch.expire();
             teamBarriers.values().forEach(TeamBarrier::release);
-            // para equipas, avaliar o que houver
-            answersByTeam.keySet().forEach(this::evaluateTeam);
+            answers.teamIds().forEach(this::evaluateTeam);
             ended.set(true);
         }
 
@@ -256,33 +251,113 @@ public class GameSession {
 
         private void checkEndCondition() {
             if (teamQuestion) {
-                if (teamsFinished.get() >= totalTeams) {
+                if (answers.allTeamsDone()) {
                     ended.set(true);
                 }
             } else {
-                if (answeredUsers.size() >= expectedPlayersIndividual()) {
+                if (answers.answeredCount() >= expectedPlayersIndividual()) {
                     ended.set(true);
                 }
             }
         }
 
         private void onTeamBarrierRelease(String teamId) {
-            evaluateTeam(teamId);
-            int done = teamsFinished.incrementAndGet();
-            if (done >= totalTeams) {
-                ended.set(true);
+            if (answers.markEvaluated(teamId)) {
+                evaluateTeam(teamId);
+                if (answers.allTeamsDone()) {
+                    ended.set(true);
+                }
             }
         }
 
         ScoreboardMessage buildScoreboardMessage(String gameCode) {
-            List<String> ranking = scoreboard.entrySet().stream()
-                    .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+            return new ScoreboardMessage(gameCode, idx, "Fim da ronda",
+                    scores.snapshotTotal(),
+                    scores.snapshotRound(),
+                    scores.ranking());
+        }
+    }
+
+    /**
+     * Componente de placar: gere pontos acumulados e da ronda.
+     */
+    private static class ScoreboardTracker {
+        private final Map<String,Integer> totalScore;
+        private final Map<String,Integer> roundScore = new ConcurrentHashMap<>();
+
+        ScoreboardTracker(Map<String,Integer> totalScore) {
+            this.totalScore = totalScore;
+        }
+
+        void addPoints(String teamId, int points) {
+            totalScore.merge(teamId, points, Integer::sum);
+            roundScore.merge(teamId, points, Integer::sum);
+        }
+
+        Map<String,Integer> snapshotTotal() {
+            return new HashMap<>(totalScore);
+        }
+
+        Map<String,Integer> snapshotRound() {
+            return new HashMap<>(roundScore);
+        }
+
+        List<String> ranking() {
+            return totalScore.entrySet().stream()
+                    .sorted((a,b) -> Integer.compare(b.getValue(), a.getValue()))
                     .map(Map.Entry::getKey)
                     .toList();
-            return new ScoreboardMessage(gameCode, idx, "Fim da ronda",
-                    new HashMap<>(scoreboard),
-                    new HashMap<>(roundPoints),
-                    ranking);
+        }
+    }
+
+    /**
+     * Componente de respostas: controla respostas únicas, por equipa e conclusão das equipas.
+     */
+    private static class AnswerRegistry {
+        private final Set<String> answeredUsers = ConcurrentHashMap.newKeySet();
+        private final Map<String, List<AnswerMessage>> answersByTeam = new ConcurrentHashMap<>();
+        private final Set<String> evaluatedTeams = ConcurrentHashMap.newKeySet();
+        private final AtomicInteger teamsFinished = new AtomicInteger(0);
+        private final int totalTeams;
+
+        AnswerRegistry(Map<String, Set<String>> snapshotTeams) {
+            this.totalTeams = snapshotTeams.size();
+            snapshotTeams.keySet().forEach(team -> answersByTeam.put(team, Collections.synchronizedList(new ArrayList<>())));
+        }
+
+        boolean registerUser(String username) {
+            return answeredUsers.add(username);
+        }
+
+        int answeredCount() {
+            return answeredUsers.size();
+        }
+
+        void recordTeamAnswer(AnswerMessage ans) {
+            List<AnswerMessage> teamList = answersByTeam.get(ans.teamId);
+            if (teamList != null) {
+                teamList.add(ans);
+            }
+        }
+
+        List<AnswerMessage> teamAnswers(String teamId) {
+            return answersByTeam.get(teamId);
+        }
+
+        boolean markEvaluated(String teamId) {
+            boolean first = evaluatedTeams.add(teamId);
+            if (first) {
+                teamsFinished.incrementAndGet();
+            }
+            return first;
+        }
+
+        boolean allTeamsDone() {
+            return teamsFinished.get() >= totalTeams;
+        }
+
+        Set<String> teamIds() {
+            return answersByTeam.keySet();
         }
     }
 
@@ -304,8 +379,4 @@ public class GameSession {
             }
         }
     }
-
-    /**
-     * Coordenação por pergunta (por jogo+índice).
-     */
 }

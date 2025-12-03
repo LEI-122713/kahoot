@@ -8,6 +8,8 @@ import java.awt.*;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Janela simples ligada ao servidor.
@@ -21,6 +23,11 @@ public class NetworkKahootWindow extends JFrame implements AutoCloseable {
     private final JList<String> listOptions = new JList<>(optionsModel);
     private final JButton btnAnswer = new JButton("Responder");
     private final JLabel lblInfo = new JLabel("Placar: --");
+    private final javax.swing.table.DefaultTableModel scoreboardModel =
+            new javax.swing.table.DefaultTableModel(new Object[]{"Team", "Score", "Last round"}, 0) {
+                @Override public boolean isCellEditable(int row, int column) { return false; }
+            };
+    private final JTable tableScoreboard = new JTable(scoreboardModel);
     private final JLabel lblTeam = new JLabel("Equipa: --");
     private final JLabel lblTimer = new JLabel("Tempo: --s", SwingConstants.RIGHT);
 
@@ -66,6 +73,12 @@ public class NetworkKahootWindow extends JFrame implements AutoCloseable {
         listOptions.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         center.add(new JScrollPane(listOptions), BorderLayout.CENTER);
         add(center, BorderLayout.CENTER);
+
+        tableScoreboard.setFillsViewportHeight(true);
+        tableScoreboard.setRowSelectionAllowed(false);
+        JScrollPane scorePane = new JScrollPane(tableScoreboard);
+        scorePane.setPreferredSize(new Dimension(220, 160));
+        add(scorePane, BorderLayout.EAST);
 
         JPanel south = new JPanel(new BorderLayout(0, 4));
         south.add(lblInfo, BorderLayout.NORTH);
@@ -119,16 +132,8 @@ public class NetworkKahootWindow extends JFrame implements AutoCloseable {
     }
 
     private void showScoreboard(ScoreboardMessage s) {
-        StringBuilder text = new StringBuilder();
-        text.append("Placar: ").append(formatScoreboard(s.scoreboard));
-        if (s.roundPoints != null && !s.roundPoints.isEmpty()) {
-            text.append(" | Ronda: ").append(formatScoreboard(s.roundPoints));
-        }
-        if (s.ranking != null && !s.ranking.isEmpty()) {
-            text.append(" | Ranking: ").append(String.join(" > ", s.ranking));
-        }
-        text.append(" | ").append(s.info);
-        lblInfo.setText(text.toString());
+        lblInfo.setText("Placar atualizado | " + s.info);
+        updateScoreboardTable(s);
     }
 
     private String formatScoreboard(Map<String, Integer> sb) {
@@ -136,6 +141,31 @@ public class NetworkKahootWindow extends JFrame implements AutoCloseable {
         StringBuilder b = new StringBuilder();
         sb.forEach((k, v) -> b.append(k).append(": ").append(v).append("  "));
         return b.toString();
+    }
+
+    private void updateScoreboardTable(ScoreboardMessage s) {
+        // limpar
+        scoreboardModel.setRowCount(0);
+        if (s == null || s.scoreboard == null) return;
+
+        Map<String,Integer> round = (s.roundPoints != null) ? s.roundPoints : Map.of();
+        List<String> order = new ArrayList<>();
+        if (s.ranking != null) order.addAll(s.ranking);
+        // garantir que todas as equipas do placar entram, mesmo que não tenham pontuado
+        s.scoreboard.keySet().forEach(team -> { if (!order.contains(team)) order.add(team); });
+
+        for (String team : order) {
+            int total = s.scoreboard.getOrDefault(team, 0);
+            int delta = round.getOrDefault(team, 0);
+            scoreboardModel.addRow(new Object[]{team, total, delta});
+        }
+        // opcional: destacar a linha da equipa atual
+        int myIndex = order.indexOf(teamId);
+        if (myIndex >= 0) {
+            tableScoreboard.setRowSelectionInterval(myIndex, myIndex);
+        } else {
+            tableScoreboard.clearSelection();
+        }
     }
 
     private void showGameOver(GameOverMessage g) {

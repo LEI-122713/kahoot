@@ -91,6 +91,10 @@ public class NetClient {
                     }
                     if (sm.ranking != null) {
                         System.out.println("Ranking: " + sm.ranking);
+                        int pos = sm.ranking.indexOf(teamId);
+                        if (pos >= 0) {
+                            System.out.println("Posição da equipa: " + (pos + 1));
+                        }
                     }
                 } else if (recv instanceof GameOverMessage gm) {
                     System.out.println("Fim: " + gm.info);
