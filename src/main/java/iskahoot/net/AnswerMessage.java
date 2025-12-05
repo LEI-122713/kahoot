@@ -1,8 +1,6 @@
 package iskahoot.net;
 
-/**
- * Enviada pelo cliente com a opção escolhida.
- */
+/** Mensagem enviada pelo cliente com a opção escolhida. */
 public class AnswerMessage implements Message {
     public String gameCode;
     public String teamId;

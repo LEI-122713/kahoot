@@ -1,8 +1,7 @@
 package iskahoot.model;
 
 
-// Representa uma pergunta do quiz.
-// Contém o texto da pergunta, a lista de opções, o índice da resposta correta e os pontos atribuídos.
+// Representa uma pergunta do quiz: texto, opções, índice da resposta correta e pontos atribuídos.
 
 import java.io.Serializable;
 import java.util.List;

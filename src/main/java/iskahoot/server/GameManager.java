@@ -7,8 +7,7 @@ import java.security.SecureRandom;
 import java.util.*;
 
 /**
- * Guarda os jogos ativos e valida pedidos de join.
- * Implementação simples e sincronizada (fase 4).
+ * Orquestra jogos ativos: gera códigos, valida joins e expõe estado/placar para a TUI.
  */
 public class GameManager {
 

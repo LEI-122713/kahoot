@@ -7,13 +7,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
- * Servidor simples da fase 4/5.
- * Aceita ligações e cria uma thread ClientHandler para cada cliente.
- *
- * Usa por defeito a porta 6000 (no teu Mac a 5000 está ocupada).
- * Podes alterar a porta passando um argumento:
- *
- *   java iskahoot.server.Server 5000
+ * Ponto de entrada do servidor: arranca a TUI, aceita sockets e lança um ClientHandler por cliente.
+ * Usa por defeito a porta 6000 (pode ser alterado passando um argumento).
  */
 public class Server {
 

@@ -1,8 +1,6 @@
 package iskahoot.net;
 
-/**
- * Mensagem enviada pelo cliente para pedir entrada num jogo.
- */
+/** Mensagem enviada pelo cliente para pedir entrada num jogo. */
 public class JoinMessage implements Message {
     public String gameCode;  // código do jogo (ex.: "ABCD")
     public String teamId;    // equipa (ex.: "Team1")

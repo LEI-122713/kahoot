@@ -32,6 +32,28 @@
         "Sistema Operativo",
         "Router"
       ]
+    },
+    {
+      "question": "Qual destas é uma opção válida para sincronizar threads em Java?",
+      "points": 4,
+      "correct": 2,
+      "options": [
+        "System.out.println()",
+        "FileReader",
+        "wait()/notify()",
+        "StringBuilder"
+      ]
+    },
+    {
+      "question": "Numa barreira, o que acontece quando todas as threads chegam?",
+      "points": 3,
+      "correct": 1,
+      "options": [
+        "As threads são terminadas",
+        "A barreira é libertada e todas prosseguem",
+        "A barreira reinicia o programa",
+        "A barreira bloqueia para sempre"
+      ]
     }
   ]
 }

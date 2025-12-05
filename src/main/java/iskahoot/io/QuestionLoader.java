@@ -1,7 +1,6 @@
 package iskahoot.io;
 
-// Carrega as perguntas a partir de um ficheiro JSON em /resources.
-// Usa a biblioteca Gson para converter o ficheiro em objetos Java (QuestionsFile).
+// Carrega as perguntas a partir de /resources (JSON) usando Gson para converter em QuestionsFile/Quiz.
 
 import com.google.gson.Gson;
 import iskahoot.model.QuestionsFile;

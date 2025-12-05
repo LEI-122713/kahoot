@@ -10,6 +10,7 @@ import java.util.List;
 
 // Entrada do cliente. Modo rede (args >=5): host port jogo equipa user -> GUI de rede.
 // Caso contrário, corre o modo local offline da entrega intermédia.
+// Escolhe modo rede se args >=5: host port jogo equipa user.
 
 public class Main {
   public static void main(String[] args) {

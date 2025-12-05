@@ -2,10 +2,7 @@ package iskahoot.net;
 
 import iskahoot.model.Quiz;
 
-/**
- * Enviada pelo servidor logo apos join bem-sucedido com o quiz completo.
- * Permite ao cliente ter as perguntas localmente (modelar e simples).
- */
+/** Mensagem enviada pelo servidor após join com o QUIZ completo para o cliente usar localmente. */
 public class QuizPayloadMessage implements Message {
     public String gameCode;
     public Quiz quiz;

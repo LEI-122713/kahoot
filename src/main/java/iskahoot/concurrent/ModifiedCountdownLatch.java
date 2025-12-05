@@ -1,13 +1,8 @@
 package iskahoot.concurrent;
 
 /**
- * Versão simplificada de um CountDownLatch com bónus para as primeiras submissões.
- * - bonusFactor: multiplicador para as primeiras respostas.
- * - bonusCount: número de respostas que recebem o bónus.
- * - waitPeriod: tempo máximo (ms) para desbloquear por timeout.
- * - count: número de descidas até libertar await.
- *
- * Implementado com synchronized/wait/notifyAll para ser didático.
+ * CountDownLatch simples com bónus para as primeiras submissões e timeout.
+ * Devolve fator de pontuação em countdown() e liberta await() por contador ou tempo.
  */
 public class ModifiedCountdownLatch {
     private final int bonusFactor;

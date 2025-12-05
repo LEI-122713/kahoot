@@ -3,8 +3,8 @@ package iskahoot.client;
 import javax.swing.*;
 import java.util.List;
 
-// Modelo de dados para a lista de opções da pergunta (usado na JList da GUI).
-// Atualiza automaticamente a interface quando são definidas novas opções.
+// Modelo de dados para a lista de opções da pergunta (JList da GUI).
+// Atualiza a interface quando são definidas novas opções.
 
 
 public class OptionsListModel extends AbstractListModel<String> {

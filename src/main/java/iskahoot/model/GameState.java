@@ -3,10 +3,8 @@ package iskahoot.model;
 import java.util.*;
 
 /**
- * Estado local do quiz (entrega intermédia):
- * - perguntas (baralhadas), índice atual, placar por equipa
- * - registo opcional de acertos por pergunta para estatísticas
- * Sem rede/concorrência nesta fase.
+ * Estado local do quiz (modo offline): perguntas baralhadas, índice atual, placar por equipa.
+ * Inclui registo opcional de acertos por pergunta para estatísticas simples.
  */
 
 public class GameState {

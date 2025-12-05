@@ -1,8 +1,6 @@
 package iskahoot.net;
 
-/**
- * Enviada pelo servidor para indicar fim do jogo.
- */
+/** Mensagem enviada pelo servidor para indicar fim do jogo. */
 public class GameOverMessage implements Message {
     public String gameCode;
     public String info;

@@ -2,9 +2,6 @@ package iskahoot.net;
 
 import java.io.Serializable;
 
-/**
- * Mensagem base para comunicação cliente-servidor.
- * Todas as mensagens enviadas pela rede implementam Serializable.
- */
+/** Base para mensagens cliente-servidor (implementa Serializable). */
 public interface Message extends Serializable {
 }

@@ -12,8 +12,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 /**
- * Janela simples ligada ao servidor.
- * Recebe QuestionMessage/ScoreboardMessage/GameOverMessage e permite enviar AnswerMessage.
+ * Janela do modo rede: recebe perguntas/placar do servidor e envia respostas.
  */
 public class NetworkKahootWindow extends JFrame implements AutoCloseable {
 

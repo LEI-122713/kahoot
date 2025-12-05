@@ -15,11 +15,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
-/**
- * Cliente simples para testar a Fase 5.
- * Uso:
- *   java iskahoot.client.NetClient 127.0.0.1 5000 ABCD Team1 joao
- */
+/** Cliente de consola para testar a rede (envia respostas automáticas). */
 public class NetClient {
     public static void main(String[] args) throws Exception {
         if (args.length != 5) {

@@ -4,11 +4,7 @@ import java.util.Map;
 import java.util.Scanner;
 
 /**
- * TUI simples para criar e listar jogos no servidor.
- * Comandos:
- *   new <equipas> <jogadoresPorEquipa> <perguntas>
- *   list
- *   help
+ * TUI do servidor: cria jogos com códigos e lista estado/placar dos jogos ativos.
  */
 public class ServerConsole implements Runnable {
 

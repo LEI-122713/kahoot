@@ -11,9 +11,7 @@ import java.util.Map;
 import java.net.SocketTimeoutException;
 
 /**
- * Thread que trata UM cliente.
- * Usa ObjectInputStream/ObjectOutputStream para trocar objetos Message.
- * Fase 5: ciclo pergunta -> resposta -> placar, até acabar o quiz.
+ * Thread por cliente: faz o handshake de join e encaminha respostas para a GameSession.
  */
 public class ClientHandler implements Runnable {
 

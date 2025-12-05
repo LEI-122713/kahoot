@@ -3,9 +3,7 @@ package iskahoot.net;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Enviada pelo servidor com o placar atualizado/resultado da ronda.
- */
+/** Mensagem enviada pelo servidor com o placar atualizado/resultado da ronda. */
 public class ScoreboardMessage implements Message {
     public String gameCode;
     public int questionIndex;

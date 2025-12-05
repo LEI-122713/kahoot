@@ -1,8 +1,6 @@
 package iskahoot.net;
 
-/**
- * Resposta do servidor a um pedido de Join.
- */
+/** Resposta do servidor a um pedido de Join do cliente. */
 public class JoinResponse implements Message {
     public boolean ok;   // true se aceitou, false se recusou
     public String info;  // mensagem de explicação

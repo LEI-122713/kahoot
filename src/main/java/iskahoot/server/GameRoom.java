@@ -8,9 +8,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Representa um jogo criado no servidor.
- * Mantém limites de equipas/jogadores e regista quem entrou.
- * Nesta fase apenas gere validações de entrada.
+ * Representa um jogo criado: guarda limites de equipas/jogadores e regista entradas válidas.
  */
 public class GameRoom {
 

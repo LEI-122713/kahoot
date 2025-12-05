@@ -1,8 +1,8 @@
 package iskahoot.concurrent;
 
 /**
- * Barreira simples com timeout, usando synchronized/wait/notifyAll.
- * Quando todas as partes chamam await ou o tempo expira, a barrierAction corre.
+ * Barreira simples com timeout (synchronized/wait/notifyAll).
+ * Liberta quando todas as partes chegam ou o tempo expira, correndo a barrierAction.
  */
 public class TeamBarrier {
     private final int parties;

@@ -2,9 +2,7 @@ package iskahoot.net;
 
 import java.util.List;
 
-/**
- * Enviada pelo servidor para anunciar a pergunta da ronda atual.
- */
+/** Mensagem enviada pelo servidor para anunciar a pergunta da ronda atual. */
 public class QuestionMessage implements Message {
     public String gameCode;
     public int questionIndex;

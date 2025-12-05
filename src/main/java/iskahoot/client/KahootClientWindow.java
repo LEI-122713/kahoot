@@ -8,9 +8,7 @@ import java.awt.*;
 import java.util.Map;
 
 /**
- * Janela principal do jogo IsKahoot (cliente local, entrega intermedia).
- * Mostra perguntas, opcoes e placar, e permite responder.
- * Interage com o GameState para gerir o progresso e as pontuacoes.
+ * Janela principal do modo offline (GameState local): mostra perguntas/opções e placar. CLASSE para a entrega intermédia
  */
 public class KahootClientWindow extends JFrame {
 

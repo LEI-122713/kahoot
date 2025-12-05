@@ -5,9 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Representa um quiz (lista de perguntas) com nome opcional.
- */
+/** Representa um quiz (lista de perguntas) com nome opcional. */
 public class Quiz implements Serializable {
     public String name;
     public List<Question> questions;

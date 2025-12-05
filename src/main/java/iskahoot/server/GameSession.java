@@ -14,8 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Estado partilhado de um jogo (código específico).
- * Gere perguntas, placar global e coordenação de respostas entre clientes.
+ * Estado partilhado de um jogo: gere perguntas, placar e coordenação (latch/barreira) das respostas.
  */
 public class GameSession {
     private final String code;

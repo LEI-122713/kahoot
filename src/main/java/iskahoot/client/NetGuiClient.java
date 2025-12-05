@@ -10,9 +10,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
-/**
- * Cliente de rede para ligar ao servidor e efetuar o handshake de join.
- */
+/** Cliente de rede (GUI) responsável pelo handshake de join e entrega de streams. */
 public class NetGuiClient implements AutoCloseable {
     private final Socket socket;
     private final ObjectOutputStream out;
